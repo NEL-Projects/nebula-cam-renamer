@@ -350,7 +350,7 @@ def scan_for_correct_build_args(source_dir, original_file, test_output_file):
 
     
     # Parameter options to test
-    erase_sizes = ["0x8000"]  # ["0x10000"] #, "0x20000", "0x40000", "0x80000"]
+    erase_sizes = ["0x8000"]  #, "0x10000", "0x20000", "0x40000", "0x80000"]
     page_sizes = ["0x1000"]  # ["256", "512", "1024", "2048", "4096"]
     pad_sizes = ["0x100000"] # [None, "512KiB", "1024KiB", "2048KiB"]
     endianness_options = ["-l"]
@@ -359,9 +359,9 @@ def scan_for_correct_build_args(source_dir, original_file, test_output_file):
     cleanmarker_sizes = [None]  # Best, "16", "20"]  # Probably no cleanmarker
     faketime_options = [False]  # Best, False]  # Try faketime first - most likely to fix timestamp differences
     squash_options = ["all"]  # Best, None, "perms", "uids"]
-    compr_modes = [None]  # Best, "priority", "size"]
+    compr_modes = [None]  # "none", "priority", "size"]
     # The above options are probably correct
-    compressions = [None]  #, "lzo", "zlib"]
+    compressions = [None]  # THIS OPTION IS INVALID, "lzo", "zlib"]
     xattr_options = [False]  #, True]
     selinux_options = [False]  #, True]
     posix_acl_options = [False]  #, True]
@@ -382,7 +382,7 @@ def scan_for_correct_build_args(source_dir, original_file, test_output_file):
                          len(compressions) * len(endianness_options) * len(cleanmarker_options) *
                          len(cleanmarker_sizes) * len(faketime_options) * len(squash_options) *
                          len(compr_modes) * len(xattr_options) * len(selinux_options) * len(posix_acl_options) *
-                         len(device_table) * len(disable_compressors))
+                         len(device_table) * len(disable_compressors) * len(enable_compressors))
     current = 0
     
     # Track closest match
@@ -405,107 +405,110 @@ def scan_for_correct_build_args(source_dir, original_file, test_output_file):
                                                     for with_posix_acl in posix_acl_options:
                                                         for devtable in device_table:
                                                             for disabled_compressor in disable_compressors:
-                                                                current += 1
+                                                                for enable_compressor in enable_compressors:
+                                                                    current += 1
 
-                                                                # Build parameter description
-                                                                params = [f"-e {erase_size}", f"-s {page_size}"]
-                                                                if pad_size:
-                                                                    params.append(f"--pad={pad_size}")
-                                                                if compression:
-                                                                    params.append(f"-q {compression}")
-                                                                params.append(endianness)
-                                                                if no_cleanmarkers:
-                                                                    params.append("-n")
-                                                                if cleanmarker_size:
-                                                                    params.append(f"-c {cleanmarker_size}")
-                                                                if faketime:
-                                                                    params.append("-f")
-                                                                if squash == "all":
-                                                                    params.append("-q")
-                                                                elif squash == "uids":
-                                                                    params.append("-U")
-                                                                elif squash == "perms":
-                                                                    params.append("-P")
-                                                                if compr_mode:
-                                                                    params.append(f"-m {compr_mode}")
-                                                                if with_xattr:
-                                                                    params.append("--with-xattr")
-                                                                if with_selinux:
-                                                                    params.append("--with-selinux")
-                                                                if with_posix_acl:
-                                                                    params.append("--with-posix-acl")
-                                                                if devtable and os.path.exists(devtable):
-                                                                    params.append(f"-D {devtable}")
-                                                                if disabled_compressor:
-                                                                    params.append(f"--x={disabled_compressor}")
-                                                                param_str = " ".join(params)
-                                                                print(f"Testing {current}/{total_combinations}: {param_str}")
+                                                                    # Build parameter description
+                                                                    params = [f"-e {erase_size}", f"-s {page_size}"]
+                                                                    if pad_size:
+                                                                        params.append(f"--pad={pad_size}")
+                                                                    if compression:
+                                                                        params.append(f"-q {compression}")
+                                                                    params.append(endianness)
+                                                                    if no_cleanmarkers:
+                                                                        params.append("-n")
+                                                                    if cleanmarker_size:
+                                                                        params.append(f"-c {cleanmarker_size}")
+                                                                    if faketime:
+                                                                        params.append("-f")
+                                                                    if squash == "all":
+                                                                        params.append("-q")
+                                                                    elif squash == "uids":
+                                                                        params.append("-U")
+                                                                    elif squash == "perms":
+                                                                        params.append("-P")
+                                                                    if compr_mode:
+                                                                        params.append(f"--compression-mode={compr_mode}")
+                                                                    if with_xattr:
+                                                                        params.append("--with-xattr")
+                                                                    if with_selinux:
+                                                                        params.append("--with-selinux")
+                                                                    if with_posix_acl:
+                                                                        params.append("--with-posix-acl")
+                                                                    if devtable and os.path.exists(devtable):
+                                                                        params.append(f"-D {devtable}")
+                                                                    if disabled_compressor:
+                                                                        params.append(f"--disable-compressor={disabled_compressor}")
+                                                                    if enable_compressor:
+                                                                        params.append(f"--enable-compressor={enable_compressor}")
+                                                                    param_str = " ".join(params)
+                                                                    print(f"Testing {current}/{total_combinations}: {param_str}")
 
-                                                                # Remove previous test file if it exists
-                                                                if os.path.exists(test_output_file):
-                                                                    os.remove(test_output_file)
+                                                                    # Remove previous test file if it exists
+                                                                    if os.path.exists(test_output_file):
+                                                                        os.remove(test_output_file)
 
-                                                                # Try building with these parameters
-                                                                success = build_jffs2_from_params(source_dir, test_output_file, param_str)
+                                                                    # Try building with these parameters
+                                                                    success = build_jffs2_from_params(source_dir, test_output_file, param_str)
 
-                                                                if success:
-                                                                    test_hash = get_file_hash(test_output_file)
-                                                                    dumps_match = compare_jffs2_dumps(original_file, test_output_file)
-                                                                    differences = compare_binaries_32bit(original_file, test_output_file)
+                                                                    if success:
+                                                                        test_hash = get_file_hash(test_output_file)
+                                                                        dumps_match = compare_jffs2_dumps(original_file, test_output_file)
+                                                                        differences = compare_binaries_32bit(original_file, test_output_file)
 
-                                                                    # Check if this is the closest match so far
-                                                                    if differences < closest_differences:
-                                                                        closest_differences = differences
-                                                                        closest_params = param_str
-                                                                        closest_combination = {
-                                                                            "erase_size": erase_size,
-                                                                            "page_size": page_size,
-                                                                            "pad_size": pad_size,
-                                                                            "compression": compression,
-                                                                            "endianness": endianness,
-                                                                            "no_cleanmarkers": no_cleanmarkers,
-                                                                            "cleanmarker_size": cleanmarker_size,
-                                                                            "faketime": faketime,
-                                                                            "squash": squash,
-                                                                            "compr_mode": compr_mode,
-                                                                            "with_xattr": with_xattr,
-                                                                            "with_selinux": with_selinux,
-                                                                            "with_posix_acl": with_posix_acl,
-                                                                            "devtable": devtable
-                                                                        }
+                                                                        # Check if this is the closest match so far
+                                                                        if differences < closest_differences:
+                                                                            closest_differences = differences
+                                                                            closest_params = param_str
+                                                                            closest_combination = {
+                                                                                "erase_size": erase_size,
+                                                                                "page_size": page_size,
+                                                                                "pad_size": pad_size,
+                                                                                "compression": compression,
+                                                                                "endianness": endianness,
+                                                                                "no_cleanmarkers": no_cleanmarkers,
+                                                                                "cleanmarker_size": cleanmarker_size,
+                                                                                "faketime": faketime,
+                                                                                "squash": squash,
+                                                                                "compr_mode": compr_mode,
+                                                                                "with_xattr": with_xattr,
+                                                                                "with_selinux": with_selinux,
+                                                                                "with_posix_acl": with_posix_acl,
+                                                                                "devtable": devtable
+                                                                            }
 
-                                                                    # Display results
-                                                                    if dumps_match:
-                                                                        print("    ✓ First 20 lines match")
+                                                                        # Display results
+                                                                        if dumps_match:
+                                                                            print("    ✓ First 20 lines match")
 
-                                                                    print(f"    32-bit differences: {differences} (Closest: {closest_differences})")
+                                                                        print(f"    32-bit differences: {differences} (Closest: {closest_differences})")
 
-                                                                    # If we're getting close (< 2000 differences), do detailed analysis
-                                                                    if differences < 2000:
-                                                                        print(f"    🔍 Close match - analyzing differences...")
-                                                                        compare_file_listings(original_file, test_output_file)
-                                                                        analyze_filesystem_structure(test_output_file)
-                                                                        extract_and_compare_files(original_file, test_output_file)
+                                                                        # If we're getting close (< 2000 differences), do detailed analysis
+                                                                        if differences < 2000:
+                                                                            print(f"    🔍 Close match - analyzing differences...")
+                                                                            compare_file_listings(original_file, test_output_file)
+                                                                            analyze_filesystem_structure(test_output_file)
+                                                                            extract_and_compare_files(original_file, test_output_file)
 
-                                                                    if test_hash and test_hash == original_hash:
-                                                                        print(f"\n🎉 HASH MATCH FOUND!")
-                                                                        print(f"Correct parameters: {param_str}")
-                                                                        return {
-                                                                            "erase_size": erase_size,
-                                                                            "page_size": page_size,
-                                                                            "pad_size": pad_size,
-                                                                            "compression": compression,
-                                                                            "endianness": endianness,
-                                                                            "no_cleanmarkers": no_cleanmarkers,
-                                                                            "cleanmarker_size": cleanmarker_size,
-                                                                            "faketime": faketime,
-                                                                            "squash": squash,
-                                                                            "compr_mode": compr_mode,
-                                                                            "with_xattr": with_xattr,
-                                                                            "with_selinux": with_selinux,
-                                                                            "with_posix_acl": with_posix_acl,
-                                                                            "devtable": devtable
-                                                                        }
+                                                                        if test_hash and test_hash == original_hash:
+                                                                            print(f"\n🎉 HASH MATCH FOUND!")
+                                                                            print(f"Correct parameters: {param_str}")
+                                                                            return {
+                                                                                "erase_size": erase_size,
+                                                                                "page_size": page_size,
+                                                                                "pad_size": pad_size,
+                                                                                "compression": compression,
+                                                                                "endianness": endianness,
+                                                                                "no_cleanmarkers": no_cleanmarkers,
+                                                                                "cleanmarker_size": cleanmarker_size,
+                                                                                "faketime": faketime,
+                                                                                "squash": squash,
+                                                                                "compr_mode": compr_mode,
+                                                                                "with_xattr": with_xattr,
+                                                                                "with_selinux": with_selinux,
+                                                                                "with_posix_acl": with_posix_acl,
+                                                                                "devtable": devtable
+                                                                            }
     
     print("\n❌ No matching combination found")
     
