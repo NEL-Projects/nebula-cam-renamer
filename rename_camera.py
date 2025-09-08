@@ -341,6 +341,56 @@ def set_timestamps_recursively(root_dir, unix_time):
             except Exception as e:
                 print(f"Failed to update dir {dpath}: {e}")
 
+import os
+import subprocess
+import tempfile
+import filecmp
+import shutil
+
+def compare_jffs2(img1, img2):
+    """
+    Extract two JFFS2 images with dump.jffs2 and compare their file trees.
+    Returns True if contents are identical (ignores metadata).
+    """
+
+    # Create temporary extraction dirs
+    tmpdir1 = tempfile.mkdtemp(prefix="jffs2_")
+    tmpdir2 = tempfile.mkdtemp(prefix="jffs2_")
+
+    try:
+        # Extract images using dump.jffs2
+        subprocess.run(["dump.jffs2", "-r", tmpdir1, "-d", img1], check=True)
+        subprocess.run(["dump.jffs2", "-r", tmpdir2, "-d", img2], check=True)
+
+        # Compare recursively
+        dirs_cmp = filecmp.dircmp(tmpdir1, tmpdir2)
+
+        def report_diff(dcmp):
+            diffs = []
+            if dcmp.left_only or dcmp.right_only or dcmp.diff_files:
+                diffs.append({
+                    "left_only": dcmp.left_only,
+                    "right_only": dcmp.right_only,
+                    "diff_files": dcmp.diff_files,
+                })
+            for sub in dcmp.subdirs.values():
+                diffs.extend(report_diff(sub))
+            return diffs
+
+        differences = report_diff(dirs_cmp)
+        if differences:
+            print("Differences found:", differences)
+            return False
+        else:
+            print("Images are functionally identical.")
+            return True
+
+    finally:
+        # Clean up extracted dirs
+        shutil.rmtree(tmpdir1)
+        shutil.rmtree(tmpdir2)
+
+
 def scan_for_correct_build_args(source_dir, original_file, test_output_file):
     """Grid search to find correct build parameters"""
 
@@ -367,8 +417,8 @@ def scan_for_correct_build_args(source_dir, original_file, test_output_file):
     posix_acl_options = [False]  #, True]
     device_table = [None]  # None
     # Try different compression control options that might affect padding/allocation
-    disable_compressors = [None]  # No change, "lzo", "zlib", "rtime"]
-    enable_compressors = [None, "lzo", "zlib", "rtime"]
+    disable_compressors = [None]  # Compressors should be right, "lzo", "zlib", "rtime"]  # zlib is required
+    enable_compressors = [None]  # Does not need lzo, and don't need to enable, "lzo", "zlib", "rtime"]
     
     original_hash = get_file_hash(original_file)
     if not original_hash:
@@ -455,7 +505,11 @@ def scan_for_correct_build_args(source_dir, original_file, test_output_file):
                                                                         test_hash = get_file_hash(test_output_file)
                                                                         dumps_match = compare_jffs2_dumps(original_file, test_output_file)
                                                                         differences = compare_binaries_32bit(original_file, test_output_file)
-
+                                                                        dumps_match_v2 = compare_jffs2
+                                                                        if dumps_match_v2:
+                                                                            print("The dumps MATCH")
+                                                                        else:
+                                                                            print("The dumps DO NOT MATCH")
                                                                         # Check if this is the closest match so far
                                                                         if differences < closest_differences:
                                                                             closest_differences = differences
@@ -522,13 +576,16 @@ def scan_for_correct_build_args(source_dir, original_file, test_output_file):
     return None
 
 def main():
-    if len(sys.argv) != 2:
-        print("Usage: python rename_camera.py <camera_name>")
-        print("Example: python rename_camera.py MYNAME")
-        print("Please note: Only capital letters and numbers can be used for the name")
-        sys.exit(1)
+    import argparse
     
-    camera_name = sys.argv[1]
+    parser = argparse.ArgumentParser(description='Rename camera firmware')
+    parser.add_argument('camera_name', help='Camera name (alphanumeric only)')
+    parser.add_argument('-g', '--grid-search', action='store_true', 
+                       help='Perform grid search to find correct JFFS2 build parameters')
+    
+    args = parser.parse_args()
+    
+    camera_name = args.camera_name
     
     # Convert to uppercase and keep only alphanumeric characters
     formatted_name = re.sub(r'[^A-Z0-9]', '', camera_name.upper())
@@ -593,9 +650,16 @@ def main():
     input_dir = "Firmware-Staging/appfs.dir"  # os.path.join("Firmware-Staging/appfs.dir")
     original_file = "Firmware-Staging/appfs.jffs2"
     output_file = "Firmware-Staging/appfs-new.jffs2"  # os.path.join("Firmware-Staging", "appfs-new.jffs2")
-    build_jffs2(input_dir, output_file)
+    # build_jffs2(input_dir, output_file)
 
-    scan_for_correct_build_args(input_dir, original_file, output_file)
+    if args.grid_search:
+        print("Performing Grid Search...")
+        scan_for_correct_build_args(input_dir, original_file, output_file)
+    else:
+        print("Creating new image in Firmware-Staging...")
+        # Params were determined from an early grid search
+        params = "-e 0x8000 -s 0x1000 --pad=0x100000 -l -n -q"
+        build_jffs2_from_params(input_dir, output_file, params)
 
 
 if __name__ == "__main__":
