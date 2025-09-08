@@ -10,6 +10,31 @@ import shutil
 import hashlib
 
 
+def build_jffs2_from_params(source_dir, output_file, params_string):
+    """Build JFFS2 filesystem using a parameter string"""
+    # Split params_string into individual arguments
+    params_list = params_string.split()
+    
+    cmd = [
+        "wsl", "mkfs.jffs2",
+        "-r", source_dir,
+        "-o", output_file
+    ]
+    
+    # Add the parameter arguments
+    cmd.extend(params_list)
+    
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode == 0:
+            return True
+        else:
+            print(f"Error: {result.stderr}")
+            return False
+    except FileNotFoundError:
+        print("mkfs.jffs2 not found. Install mtd-utils into windows subsystem for linux.")
+        return False
+
 def build_jffs2(source_dir, output_file, erase_size="0x20000", page_size="512", pad_size="1024KiB", 
                 compression=None, endianness="-l", no_cleanmarkers=False, cleanmarker_size=None,
                 faketime=False, squash_perms=False, squash_uids=False, squash_all=False,
@@ -421,11 +446,7 @@ def scan_for_correct_build_args(source_dir, original_file, test_output_file):
                                                                     os.remove(test_output_file)
 
                                                                 # Try building with these parameters
-                                                                success = build_jffs2(source_dir, test_output_file, erase_size, page_size,
-                                                                                    pad_size, compression, endianness, no_cleanmarkers,
-                                                                                    cleanmarker_size, faketime,
-                                                                                    squash=="perms", squash=="uids", squash=="all",
-                                                                                    compr_mode, with_xattr, with_selinux, with_posix_acl, devtable)
+                                                                success = build_jffs2_from_params(source_dir, test_output_file, param_str)
 
                                                                 if success:
                                                                     test_hash = get_file_hash(test_output_file)
