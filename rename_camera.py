@@ -638,10 +638,12 @@ def main():
         else:
             updated_lines.append(line)
     
-    # Write the updated config
-    # Skip for now
-    # with open(config_path, 'w') as f:
-    #     f.writelines(updated_lines)
+
+    # Skip if grid search is enabled
+    if not args.grid_search:
+        # Write the updated config
+        with open(config_path, 'w') as f:
+            f.writelines(updated_lines)
     
     print(f"Successfully updated {config_path}")
     print(f"product_lab and video_name set to: {formatted_name}")
