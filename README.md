@@ -10,11 +10,11 @@ The authors have no relation to the manufacturer of the camera, and are not resp
 
 ## How to use this tool
 
-Ensure python 3.13+ and uv are installed on your system then:
+Ensure you have WSL, python 3.13+ and uv installed on your system then:
 
 Connect *only one camera* then:
 ```
-python rename_camera NEWCAMERANAMEHERE
+python rename_camera.py NEWCAMERANAMEHERE
 ```
 
 `NEWCAMERANAMEHERE` should only have characters in A-Z or 0-9

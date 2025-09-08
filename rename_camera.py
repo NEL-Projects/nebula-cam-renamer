@@ -2,11 +2,33 @@
 Run this file to rename the attached webcam
 Usage: python rename_camera.py <camera_name>
 """
-
+import subprocess
 import sys
 import re
 import os
 import shutil
+
+
+def build_jffs2(source_dir, output_file, erase_size="0x20000", page_size="512"):
+    cmd = [
+        "wsl", "mkfs.jffs2",
+        "-r", source_dir,  # Checked
+        "-o", output_file,  # Checked
+        "-e", erase_size,  # Checked
+        "-s", page_size,
+        "-q", "lzo",
+        "-p", "1024KiB"
+        "-l",  # Checked
+    ]
+
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode == 0:
+            print(f"Successfully created {output_file}")
+        else:
+            print(f"Error: {result.stderr}")
+    except FileNotFoundError:
+        print("mkfs.jffs2 not found. Install mtd-utils into windows subsystem for linux.")
 
 def main():
     if len(sys.argv) != 2:
@@ -35,7 +57,13 @@ def main():
     # Remove existing Firmware-Staging if it exists
     if os.path.exists("Firmware-Staging"):
         print("Removing existing Firmware-Staging...")
-        shutil.rmtree("Firmware-Staging")
+        try:
+            result = subprocess.run(["rd", "/s", "/q", "Firmware-Staging"], 
+                                  shell=True, capture_output=True, text=True)
+            if result.returncode != 0:
+                print(f"Warning: Could not remove Firmware-Staging: {result.stderr}")
+        except Exception as e:
+            print(f"Warning: Could not remove Firmware-Staging: {e}")
     
     # Copy Firmware to Firmware-Staging
     print("Copying Firmware to Firmware-Staging...")
@@ -63,11 +91,18 @@ def main():
             updated_lines.append(line)
     
     # Write the updated config
-    with open(config_path, 'w') as f:
-        f.writelines(updated_lines)
+    # Skip for now
+    # with open(config_path, 'w') as f:
+    #     f.writelines(updated_lines)
     
     print(f"Successfully updated {config_path}")
     print(f"product_lab and video_name set to: {formatted_name}")
+
+    # Build the jffs2
+    input_dir = "Firmware-Staging/appfs.dir"  # os.path.join("Firmware-Staging/appfs.dir")
+    output_file = "Firmware-Staging/appfs-new.jffs2"  # os.path.join("Firmware-Staging", "appfs-new.jffs2")
+    build_jffs2(input_dir, output_file)
+
 
 if __name__ == "__main__":
     main()
