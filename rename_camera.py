@@ -291,6 +291,9 @@ def create_device_table_with_timestamp(filename, source_dir, timestamp):
                     full_path = os.path.join(root, file)
                     os.utime(full_path, (timestamp, timestamp))
 
+                    # The remainder of this function isn't needed
+                    # The line above (utime) is used to write same time as source image
+
                     rel_path = os.path.relpath(full_path, source_dir)
                     # Normalize path separators for Linux
                     rel_path = "/" + rel_path.replace("\\", "/")
@@ -662,6 +665,37 @@ def main():
         # Params were determined from an early grid search
         params = "-e 0x8000 -s 0x1000 --pad=0x100000 -l -n -q"
         build_jffs2_from_params(input_dir, output_file, params)
+
+        # Rename the images
+        old_image = "Firmware-Staging/appfs-old.jffs2"
+        original = "Firmware-Staging/appfs.jffs2"
+        new_image = "Firmware-Staging/appfs-new.jffs2"
+            
+        # Rename original to old
+        if os.path.exists(original):
+            os.rename(original, old_image)
+            print(f"Renamed {original} to {old_image}")
+        
+        # Rename new image to original
+        if os.path.exists(new_image):
+            os.rename(new_image, original)
+            print(f"Renamed {new_image} to {original}")
+        
+        print("✅ Image creation complete!")
+        
+        # Launch USB Download Tool
+        usb_tool_path = "Firmware-Staging/USBDownloadTool.exe"
+        if os.path.exists(usb_tool_path):
+            print("Launching USB Download Tool from Firmware-Staging...")
+            try:
+                subprocess.Popen([usb_tool_path], cwd="Firmware-Staging")
+            except:
+                pass
+            print("If it did not open, go into Firmware-Staging and run USBDownloadTool.exe")
+        else:
+            print(f"Warning: USBDownloadTool.exe not found at {usb_tool_path}")
+
+
 
 
 if __name__ == "__main__":
