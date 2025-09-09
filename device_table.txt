@@ -1,0 +1,32 @@
+# Device table for camera firmware
+  # Format: <name> <type> <mode> <uid> <gid> <major> <minor> <start> <inc> <count>
+
+  # Set proper permissions for executables
+  /bin/ucamera        f 755 0 0 - - - - -
+  /init/app_init.sh   f 755 0 0 - - - - -
+
+  # Create essential device nodes (typical for embedded Linux)
+  /dev               d 755 0 0 - - - - -
+  /dev/null          c 666 0 0 1 3 - - -
+  /dev/zero          c 666 0 0 1 5 - - -
+  /dev/console       c 600 0 0 5 1 - - -
+  /dev/ttyS0         c 666 0 0 4 64 - - -
+  /dev/video0        c 666 0 0 81 0 - - -
+  /dev/video1        c 666 0 0 81 1 - - -
+
+  # Typical camera-related device nodes
+  /dev/fb0           c 666 0 0 29 0 - - -
+  /dev/i2c-0         c 666 0 0 89 0 - - -
+  /dev/i2c-1         c 666 0 0 89 1 - - -
+
+  # Memory devices
+  /dev/mem           c 640 0 0 1 1 - - -
+  /dev/kmem          c 640 0 0 1 2 - - -
+
+  # Create essential directories
+  /tmp               d 777 0 0 - - - - -
+  /var               d 755 0 0 - - - - -
+  /var/log           d 755 0 0 - - - - -
+  /var/run           d 755 0 0 - - - - -
+  /proc              d 755 0 0 - - - - -
+  /sys               d 755 0 0 - - - - -
