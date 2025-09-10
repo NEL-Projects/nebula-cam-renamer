@@ -2,12 +2,14 @@
 Run this file to rename the attached webcam
 Usage: python rename_camera.py <camera_name>
 """
-import subprocess
 import sys
 import re
-import os
-import shutil
 import hashlib
+import os
+import subprocess
+import tempfile
+import filecmp
+import shutil
 
 
 def build_jffs2_from_params(source_dir, output_file, params_string):
@@ -344,11 +346,7 @@ def set_timestamps_recursively(root_dir, unix_time):
             except Exception as e:
                 print(f"Failed to update dir {dpath}: {e}")
 
-import os
-import subprocess
-import tempfile
-import filecmp
-import shutil
+
 
 def compare_jffs2(img1, img2):
     """
@@ -585,6 +583,8 @@ def main():
     parser.add_argument('camera_name', help='Camera name (alphanumeric only)')
     parser.add_argument('-g', '--grid-search', action='store_true', 
                        help='Perform grid search to find correct JFFS2 build parameters')
+    parser.add_argument('-l', '--length-ignore', action='store_true',
+                       help='Allow a camera name to be more than 9 characters (NOT RECOMMENDED)')
     
     args = parser.parse_args()
     
@@ -595,6 +595,11 @@ def main():
     
     if not formatted_name:
         print("Error: Camera name must contain at least one alphanumeric character")
+        sys.exit(1)
+
+    if len(formatted_name) > 9 and not args.length_ignore:
+        print("Error: Camera name should probably contain less than 9 characters. If you wish to disable this"
+              " limitation pass the -l or --length-ignore flag")
         sys.exit(1)
     
     print(f"Original name: {camera_name}")
@@ -645,7 +650,7 @@ def main():
     # Skip if grid search is enabled
     if not args.grid_search:
         # Write the updated config
-        with open(config_path, 'w') as f:
+        with open(config_path, 'w', newline='\n') as f:
             f.writelines(updated_lines)
     
     print(f"Successfully updated {config_path}")
